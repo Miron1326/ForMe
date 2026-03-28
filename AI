@@ -1,0 +1,128 @@
+using System.Collections.Generic;
+//Программа
+class Program
+{
+    static void Main(string[] args)
+    {
+        int populationCount = 20;
+        int maxStepCount = 5;
+        double targetPos = 10.0;
+        int botNumber = 0;
+
+        //Создание популяции
+
+        List<Bot> population = new List<Bot>();
+        for(int i = 0; i < populationCount; i++)
+        {
+            Bot newBot = new Bot();
+            newBot.name = $"БОТ{i}";
+            population.Add(newBot);
+        }
+
+        //Шаги
+
+        foreach (Bot bot in population)
+        {
+            botNumber++;
+            for(int step = 0; step < maxStepCount; step++)
+            {
+                bot.Move();
+            }
+
+
+        //Оценка
+
+
+            double distanceFromBotToTarget = Math.Abs(targetPos - bot.pos);
+            if (bot.pos > targetPos)
+            {
+                //прошел дальше цели, чем дальше прошел тем меньше
+                bot.profit = 10 / (distanceFromBotToTarget + 1);
+            }
+            else
+            {
+                bot.profit = 100 / (distanceFromBotToTarget + 1);
+            }
+
+            Console.WriteLine($"Бот {botNumber} имеет поизицию {bot.pos}, расстояние до цели {distanceFromBotToTarget}, очки {bot.profit}");
+
+        }
+
+        Bot bestBot = null;
+        double bestScore = 0;
+
+        foreach (Bot bot in population)
+        {
+            if(bot.profit > bestScore)
+            {
+                bestScore = bot.profit;
+                bestBot = bot;
+            }
+        }
+
+        Console.WriteLine($"\n ПОБЕДИТЕЛЬ {bestBot.name} \n Его Позиция: {bestBot.pos} \n очки {bestBot.profit} \n Его гены: влево - {bestBot.hisBrain.weights[0]}, вправо - {bestBot.hisBrain.weights[1]}");
+
+
+    }
+}
+//боты
+class Brain
+{
+    public double[] weights;
+    private static readonly Random globalRandom = new Random();
+
+    public Brain()
+    {
+        weights = new double[2];
+        RandomizeWeights();
+    }
+    public Brain(double[] newWeights)
+    {
+        weights = new double[2];
+        weights = newWeights;
+    }
+
+    public void RandomizeWeights()
+    {
+        Random random = new Random();
+        for(int i = 0; i < weights.Length; i++)
+        {
+            weights[i] = globalRandom.NextDouble();
+        }
+    }
+
+    public int Think()
+    {
+        double desireLeft = weights[0];
+        double desireRight = weights[1];
+
+        if(desireLeft > desireRight) return -1; else if(desireLeft < desireRight) return 1; else return 0;
+    }
+}
+class Bot
+{
+    public Brain hisBrain;
+    public double pos = 0;
+    public double profit = 0;
+    public string name = "";
+    private double ForceForMove = 1;
+
+    public Bot()
+    {
+        hisBrain = new Brain();
+    }
+
+    public Bot(Brain parentBrain)
+    {
+        hisBrain = new Brain(parentBrain.weights);
+    }
+
+    public void Move()
+    {
+        Random random = new Random();
+        ForceForMove = random.Next(1, 100);
+        int decision = hisBrain.Think();
+        if (decision == 1) pos += 1 * ForceForMove;
+        if (decision == -1) pos += 1 * ForceForMove;
+    }
+}
