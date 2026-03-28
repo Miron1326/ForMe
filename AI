@@ -34,7 +34,7 @@ class Program
 
 
             double distanceFromBotToTarget = Math.Abs(targetPos - bot.pos);
-            if (bot.pos > targetPos)
+            if (bot.pos > targetPos || bot.pos < targetPos)
             {
                 //прошел дальше цели, чем дальше прошел тем меньше
                 bot.profit = 10 / (distanceFromBotToTarget + 1);
@@ -84,10 +84,9 @@ class Brain
 
     public void RandomizeWeights()
     {
-        Random random = new Random();
         for(int i = 0; i < weights.Length; i++)
         {
-            weights[i] = globalRandom.NextDouble();
+            weights[i] = globalRandom.NextDouble() * 2 - 1;
         }
     }
 
@@ -120,9 +119,9 @@ class Bot
     public void Move()
     {
         Random random = new Random();
-        ForceForMove = random.Next(1, 100);
+        ForceForMove = random.Next(1, 3);
         int decision = hisBrain.Think();
         if (decision == 1) pos += 1 * ForceForMove;
-        if (decision == -1) pos += 1 * ForceForMove;
+        if (decision == -1) pos -= 1 * ForceForMove;
     }
 }
