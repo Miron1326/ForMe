@@ -7,6 +7,8 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 
 public class SimulationWindow : GameWindow
 {
+    private float _botPositionX = 0;
+    private int _positionUniformLocation;
     // Переменные для хранения объектов OpenGL
     private int _vertexArrayObject;
     private int _vertexBufferObject;
@@ -30,7 +32,7 @@ public class SimulationWindow : GameWindow
     protected override void OnLoad()
     {
         base.OnLoad();
-        
+
         // 1. Настраиваем цвет фона (темно-серый)
         GL.ClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
@@ -47,7 +49,7 @@ public class SimulationWindow : GameWindow
 
         // 5. Объясняем OpenGL, как читать данные из буфера
         // Аргументы: (индекс атрибута, размерность (2 для XY), тип данных, нормализация, шаг между вершинами, смещение)
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 8, 0);        
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 8, 0);
         // 6. Включаем использование этого атрибута (индекс 0)
         GL.EnableVertexAttribArray(0);
 
@@ -63,27 +65,46 @@ public class SimulationWindow : GameWindow
         string vertexSource = @"
             #version 330 core
             layout(location = 0) in vec2 aPosition;
+uniform vec2 uOffset;
             void main() {
-                gl_Position = vec4(aPosition, 0.0, 1.0);
+                gl_Position = vec4(aPosition + uOffset, 0.0, 1.0);
             }";
 
         // Исходный код фрагментного шейдера (отвечает за цвет пикселей)
-        string fragmentSource = @"
-            #version 330 core
-            out vec4 FragColor;
-            void main() {
-                FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Красный цвет (R, G, B, A)
-            }";
+        string fragmentSource = @"#version 330 core
+out vec4 FragColor;
+void main()
+{
+FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}";
 
         // Компиляция вершинного шейдера
         int vertexShader = GL.CreateShader(ShaderType.VertexShader);
         GL.ShaderSource(vertexShader, vertexSource);
         GL.CompileShader(vertexShader);
+        string vertexLog = GL.GetShaderInfoLog(vertexShader);
+        if(!string.IsNullOrWhiteSpace(vertexLog))
+        {
+            Console.WriteLine("Ошибка вершинного шейдера " + vertexLog);
+        }
+        else
+        {
+            Console.WriteLine("вершинный шейдер - ОК");
+        }
 
         // Компиляция фрагментного шейдера
         int fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
         GL.ShaderSource(fragmentShader, fragmentSource);
         GL.CompileShader(fragmentShader);
+        string fragmentLog = GL.GetShaderInfoLog(fragmentShader);
+        if (!string.IsNullOrWhiteSpace(fragmentLog))
+        {
+            Console.WriteLine("Ошибка фрагментого шейдера " + fragmentLog);
+        }
+        else
+        {
+            Console.WriteLine("фрагментный шейдер - ОК");
+        }
 
         // Создание программы и привязка шейдеров к ней
         _shaderProgram = GL.CreateProgram();
@@ -93,10 +114,18 @@ public class SimulationWindow : GameWindow
 
         // Активация программы (говорим OpenGL использовать эти шейдеры)
         GL.UseProgram(_shaderProgram);
-
+        _positionUniformLocation = GL.GetUniformLocation(_shaderProgram, "uOffset");
+        if(_positionUniformLocation == -1)
+        {
+            Console.WriteLine("не найден uOffset");
+        }
+        else
+        {
+            Console.WriteLine("uOffset найден");
+        }
         // Очистка временных объектов шейдеров (они уже внутри программы)
         GL.DetachShader(_shaderProgram, vertexShader);
-        GL.DetachShader(_shaderProgram, fragmentShader);        GL.DeleteShader(vertexShader);
+        GL.DetachShader(_shaderProgram, fragmentShader); GL.DeleteShader(vertexShader);
         GL.DeleteShader(fragmentShader);
     }
 
@@ -104,10 +133,14 @@ public class SimulationWindow : GameWindow
     {
         base.OnUpdateFrame(e);
 
-        // Если нажат ESC - закрываем окно
         if (KeyboardState.IsKeyDown(Keys.Escape))
         {
             Close();
+        }
+        _botPositionX += 0.05f;
+        if (_botPositionX > 15)
+        {
+            _botPositionX = -15;
         }
     }
 
