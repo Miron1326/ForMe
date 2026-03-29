@@ -1,0 +1,133 @@
+using System;
+using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
+
+public class SimulationWindow : GameWindow
+{
+    // Переменные для хранения объектов OpenGL
+    private int _vertexArrayObject;
+    private int _vertexBufferObject;
+    private int _shaderProgram;
+
+    // Координаты квадрата (Бота)
+    // Формат: X1, Y1, X2, Y2, X3, Y3, X4, Y4
+    private float[] _botVertices = new float[]
+    {
+        -0.5f, -0.5f, // Левый нижний
+         0.5f, -0.5f, // Правый нижний
+         0.5f,  0.5f, // Правый верхний
+        -0.5f,  0.5f  // Левый верхний
+    };
+
+    public SimulationWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
+        : base(gameWindowSettings, nativeWindowSettings)
+    {
+    }
+
+    protected override void OnLoad()
+    {
+        base.OnLoad();
+        
+        // 1. Настраиваем цвет фона (темно-серый)
+        GL.ClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+
+        // 2. Создаем VAO (Vertex Array Object) - это контейнер настроек
+        _vertexArrayObject = GL.GenVertexArray();
+        GL.BindVertexArray(_vertexArrayObject);
+
+        // 3. Создаем VBO (Vertex Buffer Object) - это память для координат
+        _vertexBufferObject = GL.GenBuffer();
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBufferObject);
+
+        // 4. Загружаем данные (_botVertices) в видеопамять
+        GL.BufferData(BufferTarget.ArrayBuffer, _botVertices.Length * sizeof(float), _botVertices, BufferUsageHint.StaticDraw);
+
+        // 5. Объясняем OpenGL, как читать данные из буфера
+        // Аргументы: (индекс атрибута, размерность (2 для XY), тип данных, нормализация, шаг между вершинами, смещение)
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 8, 0);        
+        // 6. Включаем использование этого атрибута (индекс 0)
+        GL.EnableVertexAttribArray(0);
+
+        // 7. Создаем и компилируем шейдеры (программы для видеокарты)
+        InitShaders();
+
+        Console.WriteLine("Окно и графика успешно инициализированы!");
+    }
+
+    private void InitShaders()
+    {
+        // Исходный код вершинного шейдера (отвечает за положение точек)
+        string vertexSource = @"
+            #version 330 core
+            layout(location = 0) in vec2 aPosition;
+            void main() {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+            }";
+
+        // Исходный код фрагментного шейдера (отвечает за цвет пикселей)
+        string fragmentSource = @"
+            #version 330 core
+            out vec4 FragColor;
+            void main() {
+                FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Красный цвет (R, G, B, A)
+            }";
+
+        // Компиляция вершинного шейдера
+        int vertexShader = GL.CreateShader(ShaderType.VertexShader);
+        GL.ShaderSource(vertexShader, vertexSource);
+        GL.CompileShader(vertexShader);
+
+        // Компиляция фрагментного шейдера
+        int fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
+        GL.ShaderSource(fragmentShader, fragmentSource);
+        GL.CompileShader(fragmentShader);
+
+        // Создание программы и привязка шейдеров к ней
+        _shaderProgram = GL.CreateProgram();
+        GL.AttachShader(_shaderProgram, vertexShader);
+        GL.AttachShader(_shaderProgram, fragmentShader);
+        GL.LinkProgram(_shaderProgram);
+
+        // Активация программы (говорим OpenGL использовать эти шейдеры)
+        GL.UseProgram(_shaderProgram);
+
+        // Очистка временных объектов шейдеров (они уже внутри программы)
+        GL.DetachShader(_shaderProgram, vertexShader);
+        GL.DetachShader(_shaderProgram, fragmentShader);        GL.DeleteShader(vertexShader);
+        GL.DeleteShader(fragmentShader);
+    }
+
+    protected override void OnUpdateFrame(FrameEventArgs e)
+    {
+        base.OnUpdateFrame(e);
+
+        // Если нажат ESC - закрываем окно
+        if (KeyboardState.IsKeyDown(Keys.Escape))
+        {
+            Close();
+        }
+    }
+
+    protected override void OnRenderFrame(FrameEventArgs e)
+    {
+        base.OnRenderFrame(e);
+
+        // 1. Очистка экрана (удаление предыдущего кадра)
+        GL.Clear(ClearBufferMask.ColorBufferBit);
+
+        // 2. Привязка VAO (загрузка настроек вершин)
+        GL.BindVertexArray(_vertexArrayObject);
+
+        // 3. Отрисовка примитива
+        // TriangleFan рисует веер треугольников из списка точек (идеально для квадрата)
+        // 0 - начать с первой вершины в буфере
+        // 4 - количество вершин для отрисовки
+        GL.DrawArrays(PrimitiveType.TriangleFan, 0, 4);
+
+        // 4. Замена буферов (вывод изображения на экран)
+        SwapBuffers();
+    }
+}
