@@ -4,37 +4,64 @@ class Program
 {
     static void Main(string[] args)
     {
-        int populationCount = 20;
+        int populationCount = 100;
         int maxStepCount = 5;
         double targetPos = 10.0;
-        int botNumber = 0;
+        int generationCount = 5;
+
 
         //Создание популяции
 
-        List<Bot> population = new List<Bot>();
-        for(int i = 0; i < populationCount; i++)
-        {
-            Bot newBot = new Bot();
-            newBot.name = $"БОТ{i}";
-            population.Add(newBot);
-        }
+        List<Bot> population = CreatePopulationInitial(populationCount);
 
         //Шаги
 
-        foreach (Bot bot in population)
+        for (int i = 1; i < generationCount; i++)
+        {
+            Console.WriteLine($"Эволюция номер: {i}");
+            population = RunGenerationAndFindBest(population, i, maxStepCount, targetPos, populationCount);
+            Console.WriteLine($"Эволюция номер: {i} завершена");
+            Console.ReadKey();
+        }
+
+
+
+
+    }
+
+
+    static List<Bot> CreatePopulationInitial(int populationCount)
+    {
+        List<Bot> bots = new List<Bot>();
+        for (int i = 0; i < populationCount; i++)
+        {
+            int numberOfBot = i + 1;
+            Bot newBot = new Bot();
+            newBot.name = $"БОТ{numberOfBot}";
+            bots.Add(newBot);
+        }
+        return bots;
+    }
+
+    static List<Bot> RunGenerationAndFindBest(List<Bot> currentPopulation, int GenerationNumber, int maxStepCount, double targetPos, int newPopulationCount)
+    {
+        Bot bestBot = null;
+        int botNumber = 0;
+        double bestScore = 0;
+
+        foreach (Bot bot in currentPopulation)
         {
             botNumber++;
-            for(int step = 0; step < maxStepCount; step++)
+            for (int step = 0; step < maxStepCount; step++)
             {
                 bot.Move();
             }
 
-
-        //Оценка
+            //Оценка
 
 
             double distanceFromBotToTarget = Math.Abs(targetPos - bot.pos);
-            if (bot.pos > targetPos || bot.pos < targetPos)
+            if (bot.pos > targetPos || bot.pos < -targetPos)
             {
                 //прошел дальше цели, чем дальше прошел тем меньше
                 bot.profit = 10 / (distanceFromBotToTarget + 1);
@@ -46,14 +73,7 @@ class Program
 
             Console.WriteLine($"Бот {botNumber} имеет поизицию {bot.pos}, расстояние до цели {distanceFromBotToTarget}, очки {bot.profit}");
 
-        }
-
-        Bot bestBot = null;
-        double bestScore = 0;
-
-        foreach (Bot bot in population)
-        {
-            if(bot.profit > bestScore)
+            if (bot.profit > bestScore)
             {
                 bestScore = bot.profit;
                 bestBot = bot;
@@ -62,7 +82,22 @@ class Program
 
         Console.WriteLine($"\n ПОБЕДИТЕЛЬ {bestBot.name} \n Его Позиция: {bestBot.pos} \n очки {bestBot.profit} \n Его гены: влево - {bestBot.hisBrain.weights[0]}, вправо - {bestBot.hisBrain.weights[1]}");
 
+        return populationWithBrainBestBot(newPopulationCount, bestBot);
 
+
+    }
+    static List<Bot> populationWithBrainBestBot(int populationCount, Bot bestBot)
+    {
+        List<Bot> nextPopulation = new List<Bot>();
+        for (int i = 0; i < populationCount; i++)
+        {
+            int numberOfBot = i + 1;
+            Bot newBot = new Bot(bestBot.hisBrain);
+            newBot.name = $"БОТ{numberOfBot}";
+            newBot.hisBrain.Mutate(0.1);
+                nextPopulation.Add(newBot);
+        }
+        return nextPopulation;
     }
 }
 //боты
@@ -70,6 +105,20 @@ class Brain
 {
     public double[] weights;
     private static readonly Random globalRandom = new Random();
+
+    public void Mutate(double MutationRate)
+    {
+        for (int i = 0; i < weights.Length; i++)
+        {
+            if (globalRandom.NextDouble() < MutationRate)
+            {
+                double changeOfWeight = (globalRandom.NextDouble() * 0.4) - 0.2;
+                weights[i] += changeOfWeight;
+                if(weights[i] > 1) weights[i] = 1;
+                if (weights[i] < -1) weights[i] = -1;
+            }
+        }
+    }
 
     public Brain()
     {
