@@ -1,0 +1,42 @@
+base.OnUpdateFrame(e);
+if (KeyboardState.IsKeyDown(Keys.Escape)) Close();
+
+foreach (var bot in _population)
+{
+    if (_frameCounter == 0)
+    {
+        bot.pos = -10.0;
+        bot.prevPos = -10;
+    }
+    bot.prevPos = bot.pos;
+    bot.Move();
+
+    if (bot.pos > Boundary) bot.pos = Boundary;
+    if (bot.pos < -Boundary) bot.pos = -Boundary;
+
+    double distance = Math.Abs(TargetPos - bot.pos);
+    if(Math.Abs(TargetPos - bot.pos) < 0.5)
+    {
+        bot.profit = 150.0;
+    }
+    bot.profit += 100.0 / (distance + 1.0);
+
+    if (bot.pos < -5.0) bot.profit *= 0.5;
+    if (bot.pos < 0) bot.profit *= 0.1;
+    if(bot.pos > bot.prevPos)
+    {
+        bot.profit += 0.1;
+    }
+    if (bot.profit > _bestScore)
+    {
+        _bestScore = bot.profit;
+        _bestBotOfGen = bot;
+    }
+}
+
+_frameCounter++;
+if (_frameCounter >= FramesPerGeneration)
+{
+    Console.WriteLine($"Лучший: Очки={_bestScore:F2}, Поз={_bestBotOfGen.pos:F2}, ПредПоз={_bestBotOfGen.prevPos:F2}");//:F2 - два знака после запятой
+    StartNewGeneration(_bestBotOfGen.hisBrain);
+}
